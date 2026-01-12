@@ -117,7 +117,7 @@ Kafka was considered but deemed unnecessary for this scenario.
 Images are **not sent through RabbitMQ**.  
 Only metadata and intent are published.
 
-```json
+  ```json
 {
   "messageId": "msg_123456",
   "userPhone": "+27831234567",
@@ -127,6 +127,7 @@ Only metadata and intent are published.
   "confidence": 0.92,
   "receivedAt": "2026-01-12T08:15:00Z"
 }
+```
 
 ---
 
@@ -145,3 +146,19 @@ Only metadata and intent are published.
   - Image references
 
  Used for auditing and recovery.
+ ### Billing Database (.NET Service)
+  Stores:
+  - Validated meter readings
+  - Customer references
+  - Billing periods
+  - Source message IDs
+  Used by month-end billing jobs.
+
+---
+
+## 🔁 Failure Handling & Reliability
+  ### OCR Failure
+  - Stored in DynamoDB
+  - User notified to retry
+  - Message not published to RabbitMQ
+  ### Consumer Failure
