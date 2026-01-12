@@ -361,13 +361,19 @@ flowchart TD
   - Duplicate processing safely ignored
 
   ## 🔐 Security Considerations
-  - Twilio webhook signature validation
-  - HTTPS-only endpoints
-  - Least-privilege IAM roles
-  - Encrypted S3 and DynamoDB
-  - No sensitive data in messages
+  - ✅ **Twilio webhook signature validation** - Prevents unauthorized requests
+  - ✅ **HTTPS-only endpoints** - TLS 1.2+ encryption
+  - ✅ **Least-privilege IAM roles** - Lambda can only access required resources
+  - ✅ **Encrypted S3 and DynamoDB** - S3 and DynamoDB encryption at rest
+  - ✅ **No sensitive data in messages** - Personal info in separate secure database
+  - ✅ **Secrets management** - API keys stored in AWS Secrets Manager
+  - ✅ **VPC isolation** - RabbitMQ and .NET service in private subnets
 
 ---
+
+## 🌐 API Endpoints
+**Current Version: v1**
+ **Base URL:** `https://zss2qd0la2.execute-api.af-south-1.amazonaws.com/prod/`
 
 ## 🧪 Local Development
  ### Prerequisites
