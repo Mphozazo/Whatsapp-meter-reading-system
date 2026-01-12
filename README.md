@@ -395,20 +395,66 @@ flowchart TD
 ## 🧪 Local Development
  ### Prerequisites
   - Docker & Docker Compose
-  - NET SDK
+  - NET 8.0 SDK
   - Python 3.10+
   - Twilio WhatsApp Sandbox (optional)
+  - AWS CLI (optional, for testing S3/DynamoDB)
   
 ### Local Services
-  - RabbitMQ
-  - Python OCR service
-  - .NET Billing service
-  - Local AWS emulation (optional)
-This enables end-to-end testing without AWS costs.
+  - **RabbitMQ :** -- Message broker on port 5672
+  - **RabbitMQ Management UI** - http://localhost:15672
+  - **Python OCR service** - Simulated locally
+  - **.NET Billing service** - - Runs on port 5001
+  - **Local AWS emulation (optional)** - AWS services emulation (S3, DynamoDB)
+ This enables **end-to-end testing without AWS costs**.
 
 ---
 
 ##🚀 Deployment Overview
+```mermaid
+ flowchart TB
+    subgraph AWS["☁️ AWS Cloud"]
+        direction TB
+        subgraph Serverless["Serverless"]
+            APIGW[API Gateway]
+            Lambda[Lambda Function]
+        end
+        
+        subgraph Storage["Storage"]
+            S3[S3 Bucket]
+            DynamoDB[DynamoDB Table]
+        end
+        
+        subgraph Monitoring["Monitoring"]
+            CloudWatch[CloudWatch Logs]
+            Alarms[CloudWatch Alarms]
+        end
+    end
+    
+    subgraph External["🌐 External Services"]
+        Twilio[Twilio WhatsApp API]
+    end
+    
+    subgraph OnPrem["🏢 Self-Hosted / EC2"]
+        RabbitMQ[RabbitMQ Cluster<br/>Amazon MQ]
+        BillingService[.NET Billing Service<br/>ECS / EKS / EC2]
+        Database[(SQL Database<br/>RDS)]
+    end
+
+    Twilio <--> APIGW
+    APIGW --> Lambda
+    Lambda --> S3
+    Lambda --> DynamoDB
+    Lambda --> CloudWatch
+    Lambda --> RabbitMQ
+    RabbitMQ --> BillingService
+    BillingService --> Database
+    BillingService --> Alarms
+
+    style AWS fill:#FF9900,stroke:#D97706,stroke-width:2px,color:#fff
+    style External fill:#F22F46,stroke:#D61F3A,stroke-width:2px,color:#fff
+    style OnPrem fill:#512BD4,stroke:#3A1F8F,stroke-width:2px,color:#fff
+  ```
  - API Gateway & Lambda → AWS
  - DynamoDB & S3 → AWS managed services
  - RabbitMQ → Amazon MQ or self-managed
