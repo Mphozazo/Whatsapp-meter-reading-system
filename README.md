@@ -471,11 +471,15 @@ The system supports **incremental scaling**- start small and grow as needed..
 ---
 
 ## 🔮 Future Enhancements
-  - AI-assisted OCR validation
-  - Human review queue for low-confidence images
-  - Automated monthly billing jobs
-  - Observability and monitoring
-  - Multi-tenant support
+ - 🤖 AI-assisted OCR validation - Use AWS Textract or custom ML models
+ - 👁️ Human review queue - Flag low-confidence readings for manual verification
+ - 📅 Automated monthly billing jobs - Generate invoices from accumulated readings
+ - 📊 Observability dashboard - Grafana + Prometheus for real-time monitoring
+ - 🏢 Multi-tenant support - Separate data by utility provider
+ - 📱 Mobile app integration - Native iOS/Android apps with direct API access
+ - 🌍 Multi-region deployment - Reduce latency for international users
+
+
 
 ---
 
