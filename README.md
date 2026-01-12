@@ -224,11 +224,17 @@ flowchart TB
 - Cost-effective
 
 Lambda is intentionally lightweight:
-- Validate request
-- Persist raw data
-- Publish event
-- Return HTTP 200 immediately
 
+ ```python
+
+  def lambda_handler(event, context):
+    # 1. Validate Twilio signature
+    # 2. Extract message metadata
+    # 3. Store raw data (S3 + DynamoDB)
+    # 4. Publish event to RabbitMQ
+    # 5. Return 200 OK immediately
+    return {"statusCode": 200}
+ ```
 ---
 
 ### Why DynamoDB?
