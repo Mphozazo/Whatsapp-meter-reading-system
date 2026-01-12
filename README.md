@@ -162,3 +162,27 @@ Only metadata and intent are published.
   - User notified to retry
   - Message not published to RabbitMQ
   ### Consumer Failure
+  - RabbitMQ retries enabled
+  - Dead-letter queue configured
+  - Manual intervention supported
+  ### Duplicate Messages
+  - WhatsApp message ID used as idempotency key
+  - Duplicate processing safely ignored
+
+  ## 🔐 Security Considerations
+  - Twilio webhook signature validation
+  - HTTPS-only endpoints
+  - Least-privilege IAM roles
+  - Encrypted S3 and DynamoDB
+  - No sensitive data in messages
+
+---
+
+## 🧪 Local Development
+ ### Prerequisites
+  - Docker & Docker Compose
+  - NET SDK
+  - Python 3.10+
+  - Twilio WhatsApp Sandbox (optional)
+  
+  
