@@ -347,23 +347,24 @@ flowchart TD
  ```
  ### Failure Scenarios
  #### 1. OCR Processing Failure
-  ❌ Image quality too poor to read
-  ✅ Message stored in DynamoDB with `status: FAILED`
-  ✅ User notified to retry with clearer image
-  ✅ No RabbitMQ event published
+- ❌ Image quality too poor to read
+- ✅ Message stored in DynamoDB with `status: FAILED`
+- ✅ User notified to retry with clearer image
+- ✅ No RabbitMQ event published
 
- #### 2. RabbitMQ Consumer Failure
- ❌ .NET service crashes or database unavailable
- ✅ Message remains in queue
- ✅ Automatic retry with exponential backoff
- ✅ After 5 retries → Dead Letter Queue
- ✅ CloudWatch alarm triggers ops notification
+#### 2. RabbitMQ Consumer Failure
+- ❌ .NET service crashes or database unavailable
+- ✅ Message remains in queue
+- ✅ Automatic retry with exponential backoff
+- ✅ After 5 retries → Dead Letter Queue
+- ✅ CloudWatch alarm triggers ops notification
 
- #### 3. Duplicate Messages
- ❌ User sends same image twice
- ✅ WhatsApp `MessageSid` used as idempotency key
- ✅ Duplicate processing safely ignored
- ✅ User receives "Already processed" message
+#### 3. Duplicate Messages
+- ❌ User sends same image twice
+- ✅ WhatsApp `MessageSid` used as idempotency key
+- ✅ Duplicate processing safely ignored
+- ✅ User receives "Already processed" message
+
 
 ---
   ## 🔐 Security Considerations
