@@ -75,11 +75,11 @@ flowchart LR
 
 ```
 📄 Key Architecture Benefits
-✅ Decoupled services - Each component can scale independently
-✅ Asynchronous processing - Fast webhook responses
-✅ Fault isolation - Failures don't cascade
-✅ Audit trail - Complete message history in DynamoDB
-✅ Easy to explain - Clear service boundaries for interviews
+   - ✅ Decoupled services - Each component can scale independently
+   - ✅ Asynchronous processing - Fast webhook responses
+   - ✅ Fault isolation - Failures don't cascade
+   - ✅ Audit trail - Complete message history in DynamoDB
+   - ✅ Easy to explain - Clear service boundaries for interviews
 
 ---
 
@@ -127,10 +127,83 @@ sequenceDiagram
 ```
 
  Processing Highlights
-✅ Sub-second webhook response - Lambda returns 200 OK immediately
-✅ Reliable message delivery - RabbitMQ handles retries and dead-letter queues
-✅ Asynchronous confirmation - Users receive updates after processing completes
-✅ Full observability - CloudWatch logs every step
+  - ✅ Sub-second webhook response - Lambda returns 200 OK immediately
+  - ✅ Reliable message delivery - RabbitMQ handles retries and dead-letter queues
+  - ✅ Asynchronous confirmation - Users receive updates after processing completes
+  - ✅ Full observability - CloudWatch logs every step
+
+### 🏗️ Component Architecture
+```mermaid
+
+flowchart TB
+    subgraph Input["📥 Ingestion Layer"]
+        direction LR
+        WA[WhatsApp User]
+        TW[Twilio Webhook API]
+    end
+
+    subgraph Gateway["🚪 API Layer"]
+        direction LR
+        APG[API Gateway<br/>/prod/messages]
+    end
+
+    subgraph Processing["⚙️ Processing Layer"]
+        direction TB
+        LF[Lambda Function]
+        LF1[1. Validate Webhook]
+        LF2[2. Download Media]
+        LF3[3. Extract Metadata]
+        LF4[4. Store & Publish]
+        LF --> LF1
+        LF1 --> LF2
+        LF2 --> LF3
+        LF3 --> LF4
+    end
+
+    subgraph Storage["💾 Storage Layer"]
+        direction LR
+        S3B[S3 Bucket<br/>Raw images]
+        DB[DynamoDB<br/>Message metadata]
+    end
+
+    subgraph Messaging["📨 Messaging Layer"]
+        direction LR
+        MQ[RabbitMQ<br/>Event broker]
+        DLQ[Dead Letter<br/>Queue]
+    end
+
+    subgraph Domain["🎯 Domain Layer"]
+        direction LR
+        NET[.NET Billing Service]
+        SQL[(SQL Database<br/>Billing records)]
+    end
+
+    subgraph Monitoring["📊 Observability"]
+        direction LR
+        CW[CloudWatch Logs]
+        Metrics[Metrics & Alarms]
+    end
+
+    WA --> TW
+    TW --> APG
+    APG --> LF
+    LF4 --> S3B
+    LF4 --> DB
+    LF4 --> MQ
+    LF -.-> CW
+    MQ --> NET
+    MQ -.->|On failure| DLQ
+    NET --> SQL
+    NET -.-> Metrics
+
+    style Input fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
+    style Gateway fill:#FFF3E0,stroke:#FF9800,stroke-width:2px
+    style Processing fill:#E3F2FD,stroke:#2196F3,stroke-width:2px
+    style Storage fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px
+    style Messaging fill:#FCE4EC,stroke:#E91E63,stroke-width:2px
+    style Domain fill:#E0F2F1,stroke:#009688,stroke-width:2px
+    style Monitoring fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px
+```
 
 ---
 
