@@ -75,11 +75,12 @@ flowchart LR
 
 ```
 📄 Key Architecture Benefits
-   - ✅ Decoupled services - Each component can scale independently
-   - ✅ Asynchronous processing - Fast webhook responses
-   - ✅ Fault isolation - Failures don't cascade
-   - ✅ Audit trail - Complete message history in DynamoDB
-   - ✅ Easy to explain - Clear service boundaries for interviews
+  ✅ **Decoupled services** - Each component can scale independently  
+  ✅ **Asynchronous processing** - Fast webhook responses  
+  ✅ **Fault isolation** - Failures don't cascade  
+  ✅ **Audit trail** - Complete message history in DynamoDB  
+  ✅ **Easy to explain** - Clear service boundaries for interviews
+
 
 ---
 
@@ -125,7 +126,6 @@ sequenceDiagram
     T->>U: 9. "Reading recorded: 34567 kWh"
 
 ```
-
  Processing Highlights
   - ✅ Sub-second webhook response - Lambda returns 200 OK immediately
   - ✅ Reliable message delivery - RabbitMQ handles retries and dead-letter queues
@@ -479,15 +479,28 @@ The system supports **incremental scaling**- start small and grow as needed..
  - 📱 Mobile app integration - Native iOS/Android apps with direct API access
  - 🌍 Multi-region deployment - Reduce latency for international users
 
-
-
 ---
 
 ## 📚 Key Learnings
-  - Serverless works best when kept small and fast
-  - Event-driven systems improve fault isolation
-  - Messaging enables language-agnostic services
-  - Object storage is best for binary data
+
+💡 **Serverless works best when kept small and fast**  
+Don't try to do too much in Lambda - persist, publish, and return quickly.
+
+💡 **Event-driven systems improve fault isolation**  
+When RabbitMQ or .NET service fails, Lambda still accepts messages.
+
+💡 **Messaging enables language-agnostic services**  
+Python for lightweight tasks, .NET for domain logic - best of both worlds.
+
+💡 **Object storage is best for binary data**  
+Never send images through message queues - use references instead.
+
+💡 **Idempotency is critical for webhook systems**  
+Twilio may retry webhooks - your system must handle duplicates gracefully.
+
+💡 **Observability is not optional**  
+Without CloudWatch logs, debugging production issues is impossible.
+ Object storage is best for binary data
  Idempotency is critical for webhook systems
 
 ## 🧑‍💻 Author Notes
