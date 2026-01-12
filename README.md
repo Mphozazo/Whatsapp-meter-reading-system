@@ -41,69 +41,97 @@ The solution uses an **event-driven architecture** where:
 
 ## 🏗️ High-Level Architecture
 ```mermaid
-
 flowchart LR
-    User[WhatsApp User]
-    Twilio[Twilio WhatsApp API]
-    APIGW[AWS API Gateway]
-    Lambda[AWS Lambda Python]
-    S3[Amazon S3 Meter Images]
-    DynamoDB[Amazon DynamoDB Raw Messages]
-    RabbitMQ[RabbitMQ]
-    Billing[.NET Billing Microservice]
-    
-    User --> Twilio
-    Twilio --> APIGW
-    APIGW --> Lambda
-    Lambda --> S3
-    Lambda --> DynamoDB
-    Lambda --> RabbitMQ
-    RabbitMQ --> Billing
-    Billing --> Twilio
-    Twilio --> User
+    User[📱 WhatsApp User]
+    Twilio[🔴 Twilio<br/>Webhook]
+    APIGW[🚪 API Gateway<br/>/prod/messages]
+    Lambda[λ Lambda<br/>Function]
+    S3[🪣 S3<br/>Storage]
+    DynamoDB[💾 DynamoDB<br/>Metadata]
+    RabbitMQ[🐰 RabbitMQ<br/>Message Broker]
+    Billing[⚙️ .NET Billing<br/>Microservice]
+    CloudWatch[📊 CloudWatch<br/>Logs]
+
+    User -->|1. Send Message + Media| Twilio
+    Twilio -->|2. Webhook POST| APIGW
+    APIGW -->|3. Invoke Lambda| Lambda
+    Lambda -->|4. Upload Media| S3
+    Lambda -->|5. Save Metadata| DynamoDB
+    Lambda -->|6. Publish Event| RabbitMQ
+    Lambda -.->|Logs| CloudWatch
+    RabbitMQ -->|7. Consume Message| Billing
+    Billing -->|8. Confirmation| Twilio
+    Twilio -->|9. Reply| User
+
+    style User fill:#25D366,stroke:#128C7E,stroke-width:2px,color:#fff
+    style Twilio fill:#F22F46,stroke:#D61F3A,stroke-width:2px,color:#fff
+    style APIGW fill:#FF9900,stroke:#D97706,stroke-width:2px,color:#fff
+    style Lambda fill:#FF9900,stroke:#D97706,stroke-width:2px,color:#fff
+    style S3 fill:#E05243,stroke:#B23B2F,stroke-width:2px,color:#fff
+    style DynamoDB fill:#4053D6,stroke:#2E3B8F,stroke-width:2px,color:#fff
+    style RabbitMQ fill:#FF6600,stroke:#CC5200,stroke-width:2px,color:#fff
+    style Billing fill:#512BD4,stroke:#3A1F8F,stroke-width:2px,color:#fff
+    style CloudWatch fill:#2E7D32,stroke:#1B5E20,stroke-width:2px,color:#fff
 
 ```
-
-### 🔄 System Flow
-
-
-✅ Shows end-to-end flow  
-✅ Clear service boundaries  
-✅ Easy to explain in interviews  
+📄 Key Architecture Benefits
+✅ Decoupled services - Each component can scale independently
+✅ Asynchronous processing - Fast webhook responses
+✅ Fault isolation - Failures don't cascade
+✅ Audit trail - Complete message history in DynamoDB
+✅ Easy to explain - Clear service boundaries for interviews
 
 ---
 
 ### 2️⃣ Detailed Message Processing Flow
 
-
 ```mermaid
 sequenceDiagram
-    participant U as WhatsApp User
-    participant T as Twilio
-    participant G as API Gateway
-    participant L as Lambda (Python)
-    participant D as DynamoDB
-    participant S as S3
-    participant R as RabbitMQ
-    participant B as .NET Billing Service
+    participant U as 📱 WhatsApp User
+    participant T as 🔴 Twilio Webhook
+    participant G as 🚪 API Gateway
+    participant L as λ Lambda Function
+    participant S as 🪣 S3 Storage
+    participant D as 💾 DynamoDB
+    participant R as 🐰 RabbitMQ
+    participant B as ⚙️ .NET Billing Service
+    participant CW as 📊 CloudWatch
 
-    U->>T: Send meter image
-    T->>G: POST webhook
-    G->>L: Invoke Lambda
-    L->>S: Store image
-    L->>D: Save raw message
-    L->>R: Publish metadata event
-    L-->>G: 200 OK
-    G-->>T: 200 OK
-    R->>B: Consume message
-    B->>T: Send WhatsApp confirmation
+    U->>T: 1. Send meter image
+    T->>G: 2. POST /prod/v1/messages
+    G->>L: 3. Invoke Lambda
+    
+    activate L
+    L->>CW: Write execution logs
+    L->>S: 4. Upload image to S3
+    S-->>L: Upload confirmed
+    L->>D: 5. Save raw message metadata
+    D-->>L: Save confirmed
+    L->>R: 6. Publish meter reading event
+    R-->>L: Event published
+    L-->>G: 200 OK (fast response)
+    deactivate L
+    
+    G-->>T: HTTP 200
+    T-->>U: Message received ✓
+    
+    Note over R,B: Asynchronous Processing
+    R->>B: 7. Consume event from queue
+    activate B
+    B->>B: Validate & store billing data
+    B->>T: 8. Send confirmation via Twilio API
+    deactivate B
+    
+    T->>U: 9. "Reading recorded: 34567 kWh"
 
 ```
 
- ✅ Shows async behavior  
- ✅ Makes Lambda’s responsibility clear  
- ✅ Highlights fast webhook response 
- 
+ Processing Highlights
+✅ Sub-second webhook response - Lambda returns 200 OK immediately
+✅ Reliable message delivery - RabbitMQ handles retries and dead-letter queues
+✅ Asynchronous confirmation - Users receive updates after processing completes
+✅ Full observability - CloudWatch logs every step
+
 ---
 
 ## 🧩 Architecture Decisions
