@@ -209,3 +209,20 @@ The system supports incremental scaling.
   - Automated monthly billing jobs
   - Observability and monitoring
   - Multi-tenant support
+
+---
+
+## 📚 Key Learnings
+  - Serverless works best when kept small and fast
+  - Event-driven systems improve fault isolation
+  - Messaging enables language-agnostic services
+  - Object storage is best for binary data
+ Idempotency is critical for webhook systems
+
+##🧑‍💻 Author Notes
+ This repository is a practical case study demonstrating:
+  - Event-driven microservices architecture
+  - Cloud-native AWS patterns
+  - Real-world messaging workflows
+  - Production-oriented design trade-offs
+It reflects how similar systems are built in professional environments.
