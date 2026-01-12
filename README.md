@@ -179,6 +179,18 @@ Only metadata and intent are published.
 ---
 
 ## 🗄️ Data Storage Strategy
+
+```mermaid
+flowchart LR
+    Image[Meter Image]
+    Raw[Raw OCR Data]
+    Billing[Billing Data]
+
+    Image --> S3[Amazon S3]
+    Raw --> DynamoDB[Amazon DynamoDB]
+    Billing --> SQL[(Billing Database)]
+```
+
  ### Amazon S3
   meters/{year}/{month}/{messageId}.jpg
   - Private bucket
@@ -203,7 +215,20 @@ Only metadata and intent are published.
 
 ---
 
-## 🔁 Failure Handling & Reliability
+### 🔁 Failure Handling & Reliability
+```mermaid
+flowchart TD
+    OCR[OCR Processing]
+    Retry[RabbitMQ Retry Queue]
+    DLQ[Dead Letter Queue]
+    Notify[WhatsApp Error Message]
+
+    OCR -->|Success| Billing[Billing Storage]
+    OCR -->|Failure| Retry
+    Retry -->|Retry Limit Reached| DLQ
+    DLQ --> Notify
+ ```
+
   ### OCR Failure
   - Stored in DynamoDB
   - User notified to retry
