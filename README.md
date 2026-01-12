@@ -64,22 +64,46 @@ flowchart LR
 
 ```
 
+### 🔄 System Flow
+
+
+✅ Shows end-to-end flow  
+✅ Clear service boundaries  
+✅ Easy to explain in interviews  
+
 ---
 
+### 2️⃣ Detailed Message Processing Flow
 
----
 
-## 🔄 System Flow
+```mermaid
+sequenceDiagram
+    participant U as WhatsApp User
+    participant T as Twilio
+    participant G as API Gateway
+    participant L as Lambda (Python)
+    participant D as DynamoDB
+    participant S as S3
+    participant R as RabbitMQ
+    participant B as .NET Billing Service
 
-1. User sends a meter image via WhatsApp
-2. Twilio forwards the message to API Gateway
-3. Lambda validates and stores the message
-4. Image is stored in Amazon S3
-5. Message metadata is published to RabbitMQ
-6. .NET service consumes and validates the data
-7. Billing-ready data is persisted
-8. User receives a WhatsApp confirmation
+    U->>T: Send meter image
+    T->>G: POST webhook
+    G->>L: Invoke Lambda
+    L->>S: Store image
+    L->>D: Save raw message
+    L->>R: Publish metadata event
+    L-->>G: 200 OK
+    G-->>T: 200 OK
+    R->>B: Consume message
+    B->>T: Send WhatsApp confirmation
 
+```
+
+ ✅ Shows async behavior  
+ ✅ Makes Lambda’s responsibility clear  
+ ✅ Highlights fast webhook response 
+ 
 ---
 
 ## 🧩 Architecture Decisions
