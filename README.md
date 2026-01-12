@@ -438,7 +438,7 @@ flowchart TD
     subgraph OnPrem["🏢 Self-Hosted / EC2"]
         RabbitMQ[RabbitMQ Cluster<br/>Amazon MQ]
         BillingService[.NET Billing Service<br/>ECS / EKS / EC2]
-        Database[(SQL Database<br/>RDS)]
+        Database[(PostgreSQL<br/>RDS)]
     end
 
     Twilio <--> APIGW
@@ -465,11 +465,6 @@ flowchart TD
 | **RabbitMQ** | Self-Hosting | Vertical (larger instances) |
 | **.NET Service** | ECS Fargate / EKS | Horizontal (add containers) |
 | **PostgreSQL Database** |Self-Hosting | Read replicas for reporting |
-
- - API Gateway & Lambda → AWS
- - DynamoDB & S3 → AWS managed services
- - RabbitMQ → Self-managed
- - .NET service → ECS, EKS, or VM
 
 The system supports **incremental scaling**- start small and grow as needed..
 
