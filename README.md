@@ -75,12 +75,14 @@ flowchart LR
 
 ```
 📄 Key Architecture Benefits
+
   ✅ **Decoupled services** - Each component can scale independently  
   ✅ **Asynchronous processing** - Fast webhook responses  
   ✅ **Fault isolation** - Failures don't cascade  
   ✅ **Audit trail** - Complete message history in DynamoDB  
   ✅ **Easy to explain** - Clear service boundaries for interviews
 
+ 
 
 ---
 
@@ -127,10 +129,11 @@ sequenceDiagram
 
 ```
  Processing Highlights
-  - ✅ Sub-second webhook response - Lambda returns 200 OK immediately
-  - ✅ Reliable message delivery - RabbitMQ handles retries and dead-letter queues
-  - ✅ Asynchronous confirmation - Users receive updates after processing completes
-  - ✅ Full observability - CloudWatch logs every step
+ 
+  ✅ **Sub-second webhook response** - Lambda returns 200 OK immediately  
+  ✅ **Reliable message delivery** - RabbitMQ handles retries and dead-letter queues  
+  ✅ **Asynchronous confirmation** - Users receive updates after processing completes  
+  ✅ **Full observability** - CloudWatch logs every step
 
 ### 🏗️ Component Architecture
 ```mermaid
@@ -343,22 +346,24 @@ flowchart TD
     DLQ --> Notify
  ```
  ### Failure Scenarios
-  1. OCR Failure
-  - ❌ Image quality too poor to read
-  - ✅ Message stored in DynamoDB with `status: FAILED`
-  - ✅ User notified to retry with clearer image
-  - ✅ No RabbitMQ event published
+ #### 1. OCR Processing Failure
+- ❌ Image quality too poor to read
+- ✅ Message stored in DynamoDB with `status: FAILED`
+- ✅ User notified to retry with clearer image
+- ✅ No RabbitMQ event published
 
-  2. RabbitMQ Consumer Failure
-  - ❌ .NET service crashes or database unavailable
-  - ✅ Message remains in queue
-  - ✅ Automatic retry with exponential backoff
-  - ✅ After 5 retries → Dead Letter Queue
-  - ✅ CloudWatch alarm triggers ops notification
-  - 
-  3. Duplicate Messages
-  - WhatsApp message ID used as idempotency key
-  - Duplicate processing safely ignored
+#### 2. RabbitMQ Consumer Failure
+- ❌ .NET service crashes or database unavailable
+- ✅ Message remains in queue
+- ✅ Automatic retry with exponential backoff
+- ✅ After 5 retries → Dead Letter Queue
+- ✅ CloudWatch alarm triggers ops notification
+
+#### 3. Duplicate Messages
+- ❌ User sends same image twice
+- ✅ WhatsApp `MessageSid` used as idempotency key
+- ✅ Duplicate processing safely ignored
+- ✅ User receives "Already processed" message
 
   ## 🔐 Security Considerations
   - ✅ **Twilio webhook signature validation** - Prevents unauthorized requests
