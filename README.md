@@ -367,14 +367,14 @@ flowchart TD
 
 
 ---
-  ## 🔐 Security Considerations
-  - ✅ **Twilio webhook signature validation** - Prevents unauthorized requests
-  - ✅ **HTTPS-only endpoints** - TLS 1.2+ encryption
-  - ✅ **Least-privilege IAM roles** - Lambda can only access required resources
-  - ✅ **Encrypted S3 and DynamoDB** - S3 and DynamoDB encryption at rest
-  - ✅ **No sensitive data in messages** - Personal info in separate secure database
-  - ✅ **Secrets management** - API keys stored in AWS Secrets Manager
-  - ✅ **VPC isolation** - RabbitMQ and .NET service in private subnets
+   ## 🔐 Security Considerations
+- ✅ **Twilio webhook signature validation** - Prevents unauthorized requests
+- ✅ **HTTPS-only endpoints** - TLS 1.2+ encryption
+- ✅ **Least-privilege IAM roles** - Lambda can only access required resources
+- ✅ **Encrypted S3 and DynamoDB** - S3 and DynamoDB encryption at rest
+- ✅ **No sensitive data in messages** - Personal info in separate secure database
+- ✅ **Secrets management** - API keys stored in AWS Secrets Manager
+- ✅ **VPC isolation** - RabbitMQ and .NET service in private subnets
 
 ---
 
@@ -417,7 +417,8 @@ flowchart TD
 
 ---
 
-##🚀 Deployment Overview
+## 🚀 Deployment Overview
+
 ```mermaid
  flowchart TB
     subgraph AWS["☁️ AWS Cloud"]
