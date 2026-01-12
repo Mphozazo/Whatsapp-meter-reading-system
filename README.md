@@ -40,6 +40,29 @@ The solution uses an **event-driven architecture** where:
 ---
 
 ## 🏗️ High-Level Architecture
+```mermaid
+
+flowchart LR
+    User[WhatsApp User]
+    Twilio[Twilio WhatsApp API]
+    APIGW[AWS API Gateway]
+    Lambda[AWS Lambda Python]
+    S3[Amazon S3 Meter Images]
+    DynamoDB[Amazon DynamoDB Raw Messages]
+    RabbitMQ[RabbitMQ]
+    Billing[.NET Billing Microservice]
+    
+    User --> Twilio
+    Twilio --> APIGW
+    APIGW --> Lambda
+    Lambda --> S3
+    Lambda --> DynamoDB
+    Lambda --> RabbitMQ
+    RabbitMQ --> Billing
+    Billing --> Twilio
+    Twilio --> User
+
+```
 
 ---
 
