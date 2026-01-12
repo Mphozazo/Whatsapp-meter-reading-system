@@ -455,11 +455,23 @@ flowchart TD
     style External fill:#F22F46,stroke:#D61F3A,stroke-width:2px,color:#fff
     style OnPrem fill:#512BD4,stroke:#3A1F8F,stroke-width:2px,color:#fff
   ```
+
+### Deployment Strategy
+
+| Component | Platform | Scaling |
+|-----------|----------|---------|
+| **API Gateway + Lambda** | AWS Serverless | Automatic (up to 1000 concurrent) |
+| **S3 + DynamoDB** | AWS Managed | Automatic |
+| **RabbitMQ** | Self-Hosting | Vertical (larger instances) |
+| **.NET Service** | ECS Fargate / EKS | Horizontal (add containers) |
+| **PostgreSQL Database** |Self-Hosting | Read replicas for reporting |
+
  - API Gateway & Lambda → AWS
  - DynamoDB & S3 → AWS managed services
- - RabbitMQ → Amazon MQ or self-managed
+ - RabbitMQ → Self-managed
  - .NET service → ECS, EKS, or VM
-The system supports incremental scaling.
+
+The system supports **incremental scaling**- start small and grow as needed..
 
 ---
 
