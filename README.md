@@ -255,8 +255,6 @@ RabbitMQ provides:
 - Retry and dead-letter queues
 - Simple consumer model
 
-Kafka was considered but deemed unnecessary for this scenario.
-
 ---
 
 ### Why Python and .NET?
@@ -282,6 +280,11 @@ Only metadata and intent are published.
   "receivedAt": "2026-01-12T08:15:00Z"
 }
 ```
+### Design Principles:
+ - Small message size (< 1KB) for fast delivery
+ - S3 reference instead of binary data
+ - Idempotent with messageId as key
+ - Contains all data needed for billing 
 
 ---
 
