@@ -384,19 +384,13 @@ flowchart TD
  ### Request Headers:###
  - X-Twilio-Signature: `<computed_signature>`
  - Content-Type: `application/x-www-form-urlencoded`
-## Response:##
+### Response:###
 ```xml
  <?xml version="1.0" encoding="UTF-8"?>
  <Response>
     <Message>Thank you! Your meter reading has been received.</Message>
  </Response>
 ```
-Legacy Endpoint (Deprecated)
-
-POST /prod/messages - Use /prod/v1/messages instead
-Sunset Date: June 30, 2026
-
-
 
 ## 🧪 Local Development
  ### Prerequisites
