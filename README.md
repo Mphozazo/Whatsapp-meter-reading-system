@@ -185,4 +185,27 @@ Only metadata and intent are published.
   - Python 3.10+
   - Twilio WhatsApp Sandbox (optional)
   
-  
+### Local Services
+  - RabbitMQ
+  - Python OCR service
+  - .NET Billing service
+  - Local AWS emulation (optional)
+This enables end-to-end testing without AWS costs.
+
+---
+
+##🚀 Deployment Overview
+ - API Gateway & Lambda → AWS
+ - DynamoDB & S3 → AWS managed services
+ - RabbitMQ → Amazon MQ or self-managed
+ - .NET service → ECS, EKS, or VM
+The system supports incremental scaling.
+
+---
+
+## 🔮 Future Enhancements
+  - AI-assisted OCR validation
+  - Human review queue for low-confidence images
+  - Automated monthly billing jobs
+  - Observability and monitoring
+  - Multi-tenant support
