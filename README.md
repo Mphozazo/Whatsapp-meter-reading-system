@@ -373,7 +373,7 @@ flowchart TD
 
 ## 🌐 API Endpoints
 **Current Version: v1**
- **Base URL:** `https://zss2qd0la2.execute-api.af-south-1.amazonaws.com/prod/`
+- **Base URL:** `https://zss2qd0la2.execute-api.af-south-1.amazonaws.com/prod/`
 
 ## 🧪 Local Development
  ### Prerequisites
