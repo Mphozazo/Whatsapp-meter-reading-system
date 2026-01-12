@@ -127,3 +127,21 @@ Only metadata and intent are published.
   "confidence": 0.92,
   "receivedAt": "2026-01-12T08:15:00Z"
 }
+
+---
+
+## 🗄️ Data Storage Strategy
+ ### Amazon S3
+  meters/{year}/{month}/{messageId}.jpg
+  - Private bucket
+  - Encrypted at rest
+  - IAM-controlled access
+
+ ### Amazon DynamoDB
+  Stores:
+  - Raw WhatsApp payloads
+  - OCR output
+  - Confidence scores
+  - Image references
+
+ Used for auditing and recovery.
