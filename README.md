@@ -302,26 +302,30 @@ flowchart LR
 ```
 
  ### Amazon S3
-  meters/{year}/{month}/{messageId}.jpg
+  **Path :*** meters/{year}/{month}/{messageId}.jpg
   - Private bucket
   - Encrypted at rest
   - IAM-controlled access
+  - CloudFront CDN for serving images
 
  ### Amazon DynamoDB
+ **Partition Key:** messageId
   Stores:
   - Raw WhatsApp payloads
-  - OCR output
+  - OCR extraction results
   - Confidence scores
-  - Image references
+  - S3 image references
+  - Processing timestamps
+ **Purpose:** Audit trail and recovery. Not used for billing queries.
 
- Used for auditing and recovery.
  ### Billing Database (.NET Service)
+  **Technology:** PostgreSQL
   Stores:
   - Validated meter readings
   - Customer references
   - Billing periods
   - Source message IDs
-  Used by month-end billing jobs.
+  **Used by :** Month-end billing jobs.
 
 ---
 
@@ -338,16 +342,21 @@ flowchart TD
     Retry -->|Retry Limit Reached| DLQ
     DLQ --> Notify
  ```
+ ### Failure Scenarios
+  1. OCR Failure
+  - ❌ Image quality too poor to read
+  - ✅ Message stored in DynamoDB with `status: FAILED`
+  - ✅ User notified to retry with clearer image
+  - ✅ No RabbitMQ event published
 
-  ### OCR Failure
-  - Stored in DynamoDB
-  - User notified to retry
-  - Message not published to RabbitMQ
-  ### Consumer Failure
-  - RabbitMQ retries enabled
-  - Dead-letter queue configured
-  - Manual intervention supported
-  ### Duplicate Messages
+  2. RabbitMQ Consumer Failure
+  - ❌ .NET service crashes or database unavailable
+  - ✅ Message remains in queue
+  - ✅ Automatic retry with exponential backoff
+  - ✅ After 5 retries → Dead Letter Queue
+  - ✅ CloudWatch alarm triggers ops notification
+  - 
+  3. Duplicate Messages
   - WhatsApp message ID used as idempotency key
   - Duplicate processing safely ignored
 
