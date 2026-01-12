@@ -375,6 +375,29 @@ flowchart TD
 **Current Version: v1**
 - **Base URL:** `https://zss2qd0la2.execute-api.af-south-1.amazonaws.com/prod/`
 
+### Submit Meter Reading ###
+ - Method: `POST`
+ - Endpoint: `/messages`
+ - Full URL: `https://zss2qd0la2.execute-api.af-south-1.amazonaws.com/prod/messages`
+ - Content-Type: `application/x-www-form-urlencoded (Twilio format)`
+ - Authentication: `Twilio webhook signature`
+ ### Request Headers:###
+ - X-Twilio-Signature: `<computed_signature>`
+ - Content-Type: `application/x-www-form-urlencoded`
+## Response:##
+```xml
+ <?xml version="1.0" encoding="UTF-8"?>
+ <Response>
+    <Message>Thank you! Your meter reading has been received.</Message>
+ </Response>
+```
+Legacy Endpoint (Deprecated)
+
+POST /prod/messages - Use /prod/v1/messages instead
+Sunset Date: June 30, 2026
+
+
+
 ## 🧪 Local Development
  ### Prerequisites
   - Docker & Docker Compose
