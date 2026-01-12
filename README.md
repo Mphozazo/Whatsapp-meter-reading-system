@@ -219,7 +219,7 @@ The system supports incremental scaling.
   - Object storage is best for binary data
  Idempotency is critical for webhook systems
 
-##🧑‍💻 Author Notes
+## 🧑‍💻 Author Notes
  This repository is a practical case study demonstrating:
   - Event-driven microservices architecture
   - Cloud-native AWS patterns
