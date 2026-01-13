@@ -444,7 +444,7 @@ flowchart TD
     end
     
     subgraph OnPrem["🏢 Self-Hosted "]
-        RabbitMQ[RabbitMQ Cluster<br/>Amazon MQ]
+        RabbitMQ[RabbitMQ Cluster]
         BillingService[.NET Billing Service<br/>ECS / EKS / EC2]
         Database[(PostgreSQL<br/>RDS)]
     end
@@ -518,3 +518,42 @@ Without CloudWatch logs, debugging production issues is impossible.
   - Real-world messaging workflows
   - Production-oriented design trade-offs
 It reflects how similar systems are built in professional environments.
+
+### 💼 About This Project
+
+This repository is a **practical case study** demonstrating:
+- Event-driven microservices architecture
+- Cloud-native AWS patterns
+- Real-world messaging workflows
+- Production-oriented design trade-offs
+
+It reflects how similar systems are built in **professional enterprise environments**.
+
+---
+
+## 📬 Contributing & Feedback
+
+Interested in this project? Here's how you can engage:
+
+- ⭐ **Star this repository** if you find it useful
+- 🐛 **Report issues** or suggest improvements via [GitHub Issues](https://github.com/Mphozazo/Whatsapp-meter-reading-system/issues)
+- 🔀 **Fork and experiment** with your own implementations
+- 💬 **Connect on LinkedIn** to discuss architecture patterns
+
+---
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+**[⭐ Star this repo](https://github.com/Mphozazo/Whatsapp-meter-reading-system)** | **[🔗 View on GitHub](https://github.com/Mphozazo/Whatsapp-meter-reading-system)** | **[👤 More Projects](https://github.com/Mphozazo)**
+
+---
+
+*Building reliable, scalable, and production-ready systems with modern cloud-native architecture*
+
+</div>
