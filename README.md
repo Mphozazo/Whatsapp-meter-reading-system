@@ -278,6 +278,7 @@ Only metadata and intent are published.
   "userPhone": "+27831234567",
   "meterType": "electricity",
   "meterReading": 34567,
+  "memterNumber": 1234567890
   "imageS3Key": "meters/2026/01/msg_123456.jpg",
   "confidence": 0.92,
   "receivedAt": "2026-01-12T08:15:00Z"
