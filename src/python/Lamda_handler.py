@@ -8,20 +8,65 @@ import base64
 import requests
 import time
 import os
+from decimal import Decimal
+from PIL import Image, ImageEnhance
+from io import BytesIO
 
 # AWS clients
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ.get("DYNAMO_TABLE", "MessagesTable"))
 s3_client = boto3.client("s3")
-textract_client = boto3.client("textract")
-
-
+textract_client = textract_client = boto3.client(
+    "textract",
+    region_name="eu-west-1",
+    endpoint_url="https://textract.eu-west-1.amazonaws.com"
+)
 
 # Environment variables
 BUCKET = os.environ.get("S3_BUCKET", "whatsapp-media-storage-provide-your-ownbustket")
 CLOUDFRONT_DOMAIN = os.environ.get("CLOUDFRONT_DOMAIN", "https://somethingsomewhere.cloudfront.net")
 TWILIO_SID = os.environ.get("TWILIO_ACCOUNT_SID")
 TWILIO_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
+
+def handle_confirmation(sender, confirmed):
+    if confirmed:
+        reply = (
+            "<Message>✅ Thank you! Your meter reading has been confirmed "
+            "and recorded successfully.</Message>"
+        )
+    else:
+        reply = (
+            "<Message>❌ No problem. Please resend a clearer image of your meter "
+            "with the digits fully visible.</Message>"
+        )
+
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/xml"},
+        "body": f"<?xml version='1.0' encoding='UTF-8'?><Response>{reply}</Response>"
+    }
+
+# convert value into decimal
+def to_decimal(value):
+    if value is None:
+        return None
+    return Decimal(str(value))
+
+def preprocess_image(image_bytes):
+    image = Image.open(BytesIO(image_bytes)).convert("L")  # grayscale
+
+    # Increase contrast
+    enhancer = ImageEnhance.Contrast(image)
+    image = enhancer.enhance(2.0)
+
+    # Increase sharpness
+    sharpness = ImageEnhance.Sharpness(image)
+    image = sharpness.enhance(2.0)
+
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG", quality=95)
+    return buffer.getvalue()
+
 
 # Retry helper (exponential backoff)
 def retry(func, max_attempts=3, initial_delay=0.3):
@@ -37,56 +82,35 @@ def retry(func, max_attempts=3, initial_delay=0.3):
             print(f"Retry {attempt} after {delay}s due to: {e}")
             time.sleep(delay)
 
-def extract_meter_reading_from_s3(bucket, key):
+def extract_meter_reading_from_s3(bucket, s3_key):
     """
-    Extract text from image stored in S3 using AWS Textract.
-    Returns the detected meter reading and confidence score.
+    Extract meter reading from S3 image using AWS Textract.
     """
     try:
-        print(f"Starting Textract OCR on s3://{bucket}/{key}")
-        
-        # Call Textract to detect text
         response = textract_client.detect_document_text(
-            Document={
-                'S3Object': {
-                    'Bucket': bucket,
-                    'Name': key
-                }
-            }
+            Document={'S3Object': {'Bucket': bucket, 'Name': s3_key}}
         )
         
-        print("Textract SUCCESS")
-        print(json.dumps(response, default=str))
-        
-        # Extract all detected text
         detected_text = []
-        for block in response.get('Blocks', []):
+        for block in response['Blocks']:
             if block['BlockType'] == 'LINE':
-                text = block.get('Text', '')
-                confidence = block.get('Confidence', 0)
                 detected_text.append({
-                    'text': text,
-                    'confidence': confidence
+                    'text': block['Text'],
+                    'confidence': block['Confidence']
                 })
-                print(f"Detected: '{text}' (confidence: {confidence:.2f}%)")
         
-        # Extract meter reading using pattern matching
-        meter_reading = extract_reading_from_text(detected_text)
-        
-        return {
-            'reading': meter_reading.get('value'),
-            'confidence': meter_reading.get('confidence'),
-            'raw_text': [item['text'] for item in detected_text],
-            'method': meter_reading.get('method', 'pattern_match')
-        }
+        result = extract_reading_from_text(detected_text)
+        result['raw_text'] = [item['text'] for item in detected_text]
+        return result
         
     except Exception as e:
-        print(f"Textract OCR failed: {e}")
+        print(f"OCR extraction failed: {e}")
         return {
             'reading': None,
             'confidence': 0,
-            'raw_text': [],
-            'error': str(e)
+            'method': 'textract_error',
+            'error': str(e),
+            'raw_text': []
         }
 
 def extract_reading_from_text(detected_text):
@@ -175,85 +199,108 @@ def lambda_handler(event, context):
 
     # Parse form-urlencoded
     parsed = urllib.parse.parse_qs(body)
+    
 
     sender = parsed.get("From", [None])[0]
     message = parsed.get("Body", [""])[0]  
-    meter_number = parsed.get("MeterNumber", [None])[0]
+    meter_number = parsed.get("Meter Number", [None])[0]
     num_media = int(parsed.get("NumMedia", ["0"])[0])
+
+    normalized_message = message.strip().lower() if message else ""
+
+    if normalized_message in ["yes", "y"]:
+        return handle_confirmation(sender, confirmed=True)
+    if normalized_message in ["no", "n"]:
+        return handle_confirmation(sender, confirmed=False)
 
     if not sender:
         print("No sender found, ignoring.")
         return {"statusCode": 200, "body": "OK"}
 
+    print(f"Processing message from {sender}: '{message}' with {num_media} media items")
+
     media_urls = []
     ocr_results = []
 
     # Process media if exists
-    for i in range(num_media):
-        media_url = parsed.get(f"MediaUrl{i}", [None])[0]
-        media_type = parsed.get(f"MediaContentType{i}", [None])[0]
+    if num_media > 0:
+        for i in range(num_media):
+            media_url = parsed.get(f"MediaUrl{i}", [None])[0]
+            media_type = parsed.get(f"MediaContentType{i}", [None])[0]
 
-        if not media_url or not media_type:
-            continue
+            if not media_url or not media_type:
+                print(f"Media {i}: Missing URL or type")
+                continue
 
-        # Only process images
-        if not media_type.startswith("image/"):
-            print(f"Skipping non-image media: {media_type}")
-            continue
+            # Only process images
+            if not media_type.startswith("image/"):
+                print(f"Skipping non-image media: {media_type}")
+                continue
 
-        # Download media with retry
-        def download():
-            print(f"Downloading media: {media_url}")
-            response = requests.get(media_url, auth=(TWILIO_SID, TWILIO_TOKEN), timeout=10)
-            response.raise_for_status()
-            return response.content
+            print(f"Processing image {i}: {media_type}")
 
-        try:
-            media_bytes = retry(download)
-        except Exception as e:
-            print(f"Failed to download media: {e}")
-            continue
+            # Download media with retry
+            def download():
+                print(f"Downloading media: {media_url}")
+                response = requests.get(media_url, auth=(TWILIO_SID, TWILIO_TOKEN), timeout=10)
+                response.raise_for_status()
+                return response.content
 
-        # Upload to S3 with structured key
-        now = datetime.utcnow()
-        year = now.year
-        month = f"{now.month:02d}"
-        message_sid = parsed.get("MessageSid", [str(uuid.uuid4())])[0]
-        ext = media_type.split("/")[-1]
+            try:
+                
+                raw_bytes = retry(download)
+                media_bytes = preprocess_image(raw_bytes)
 
-        s3_key = f"meters/{year}/{month}/{message_sid}_{i}.{ext}"
+                print(f"Downloaded {len(media_bytes)} bytes")
+            except Exception as e:
+                print(f"Failed to download media: {e}")
+                continue
 
-        def upload():
-            print(f"Uploading to S3: {s3_key}")
-            s3_client.put_object(
-                Bucket=BUCKET,
-                Key=s3_key,
-                Body=media_bytes,
-                ContentType=media_type
-            )
-            return True
+            # Upload to S3 with structured key
+            now = datetime.utcnow()
+            year = now.year
+            month = f"{now.month:02d}"
+            message_sid = parsed.get("MessageSid", [str(uuid.uuid4())])[0]
+            ext = media_type.split("/")[-1]
 
-        try:
-            retry(upload)
-        except Exception as e:
-            print(f"Failed to upload to S3: {e}")
-            continue
+            s3_key = f"meters/{year}/{month}/{message_sid}_{i}.{ext}"
 
-        # Generate CloudFront URL
-        media_url_cf = f"{CLOUDFRONT_DOMAIN}/{s3_key}"
-        media_urls.append(media_url_cf)
-        print(f"Media available at: {media_url_cf}")
+            def upload():
+                print(f"Uploading to S3: {s3_key}")
+                s3_client.put_object(
+                    Bucket=BUCKET,
+                    Key=s3_key,
+                    Body=media_bytes,
+                    ContentType=media_type
+                )
+                return True
 
-        # ✨ NEW: Extract meter reading using OCR
-        ocr_result = extract_meter_reading_from_s3(BUCKET, s3_key)
-        ocr_results.append({
-            's3_key': s3_key,
-            'reading': ocr_result.get('reading'),
-            'confidence': ocr_result.get('confidence'),
-            'raw_text': ocr_result.get('raw_text'),
-            'method': ocr_result.get('method'),
-            'error': ocr_result.get('error')
-        })
+            try:
+                retry(upload)
+                print(f"Successfully uploaded to S3: {s3_key}")
+            except Exception as e:
+                print(f"Failed to upload to S3: {e}")
+                continue
+
+            # Generate CloudFront URL
+            media_url_cf = f"{CLOUDFRONT_DOMAIN}/{s3_key}"
+            media_urls.append(media_url_cf)
+            print(f"Media available at: {media_url_cf}")
+
+            # ✨ Extract meter reading using OCR (only for images)
+            print(f"Starting OCR extraction for {s3_key}")
+            ocr_result = extract_meter_reading_from_s3(BUCKET, s3_key)
+            ocr_results.append({
+                's3_key': s3_key,
+                'reading': ocr_result.get('reading'),
+                'confidence': ocr_result.get('confidence'),
+                'raw_text': ocr_result.get('raw_text'),
+                'method': ocr_result.get('method'),
+                'error': ocr_result.get('error')
+            })
+            print(f"OCR complete for {s3_key}")
+    else:
+        print("No media attachments to process")
 
     # Determine final meter reading (use highest confidence)
     meter_reading = None
@@ -266,6 +313,8 @@ def lambda_handler(event, context):
             meter_reading = best['reading']
             best_confidence = best['confidence']
             print(f"✓ Final meter reading: {meter_reading} (confidence: {best_confidence:.2f}%)")
+        else:
+            print("No valid meter readings extracted from images")
 
     # Save message + media URLs + OCR results in DynamoDB
     item = {
@@ -276,43 +325,72 @@ def lambda_handler(event, context):
         "media_urls": media_urls,
         "meterType": "electricity",
         "meterNumber": meter_number,
-        "meterReading": meter_reading,
-        "ocrConfidence": best_confidence,
-        "ocrResults": ocr_results,
+        "meterReading": to_decimal(meter_reading),
+        "ocrConfidence": to_decimal(best_confidence),
+        "ocrResults": [
+        {
+            "s3_key": r["s3_key"],
+            "reading": to_decimal(r["reading"]),
+            "confidence": to_decimal(r["confidence"]),
+            "raw_text": r["raw_text"],
+            "method": r["method"],
+            "error": r.get("error")
+        }
+        for r in ocr_results
+        ],
         "timestamp": datetime.utcnow().isoformat()
     }
 
-    print("Saving item:", json.dumps(item, default=str))
-    table.put_item(Item=item)
+    print("Saving item to DynamoDB:", json.dumps(item, default=str))
+    try:
+        table.put_item(Item=item)
+        print("Successfully saved to DynamoDB")
+    except Exception as e:
+        print(f"Failed to save to DynamoDB: {e}")
 
-    # Prepare TwiML reply with meter reading
+    # Prepare TwiML reply
     twiml_parts = ["<?xml version='1.0' encoding='UTF-8'?><Response>"]
     
-    if meter_reading and best_confidence > 70:
-        # High confidence reading
-        twiml_parts.append(
-            f"<Message>✅ Meter reading received: {meter_reading:.2f} kWh "
-            f"(Confidence: {best_confidence:.0f}%)</Message>"
-        )
-    elif meter_reading and best_confidence > 50:
-        # Medium confidence - ask for confirmation
-        twiml_parts.append(
-            f"<Message>⚠️ Detected reading: {meter_reading:.2f} kWh "
-            f"(Low confidence: {best_confidence:.0f}%). Please confirm or resend clearer image.</Message>"
-        )
-    else:
-        # Failed to extract reading
-        twiml_parts.append(
-            "<Message>❌ Could not read meter. Please send a clearer image with the meter display visible.</Message>"
-        )
+    if num_media > 0:
+        # Response when image was sent
+        if meter_reading and best_confidence > 70:
+            # High confidence reading
+            twiml_parts.append(
+                f"<Message>✅ Meter reading received: {meter_reading:.2f} kWh "
+                f"(Confidence: {best_confidence:.0f}%)</Message>"
+            )
+       
+            # Medium confidence - ask for confirmation
+        elif meter_reading:
+            twiml_parts.append(
+                f"<Message>⚠️ We detected a reading: {meter_reading:.0f} kWh "
+                f"(Low confidence: {best_confidence:.0f}%). "
+                f"Reply YES to confirm or resend a clearer image.</Message>"
+            )
+        else:
+            # Failed to extract reading
+            twiml_parts.append(
+                "<Message>❌ Could not read meter. Please send a clearer image with the meter display visible.</Message>"
+            )
 
-    # Optionally echo the processed image
-    for url in media_urls:
-        twiml_parts.append(f"<Message><Media>{url}</Media></Message>")
+        # Optionally echo the processed image
+        for url in media_urls:
+            twiml_parts.append(f"<Message><Media>{url}</Media></Message>")
+    else:
+        # Response when only text message was sent
+        if message:
+            twiml_parts.append(
+                f"<Message>Message received: {message}. To submit a meter reading, please send an image of your meter.</Message>"
+            )
+        else:
+            twiml_parts.append(
+                "<Message>Please send an image of your meter to submit a reading.</Message>"
+            )
 
     twiml_parts.append("</Response>")
     twiml = "".join(twiml_parts)
 
+    print("Returning TwiML response")
     return {
         "statusCode": 200,
         "headers": {"Content-Type": "application/xml"},
