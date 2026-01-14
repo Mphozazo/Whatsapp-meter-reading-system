@@ -446,7 +446,7 @@ flowchart TD
     
     subgraph OnPrem["🏢 Self-Hosted "]
         RabbitMQ[RabbitMQ Cluster]
-        BillingService[.NET Billing Service<br/>ECS / EKS / EC2]
+        BillingService[.NET Billing Service(Microservices)<br/>ECS / EKS / EC2]
         Database[(PostgreSQL<br/>RDS)]
     end
 
@@ -472,7 +472,7 @@ flowchart TD
 | **API Gateway + Lambda** | AWS Serverless | Automatic (up to 1000 concurrent) |
 | **S3 + DynamoDB** | AWS Managed | Automatic |
 | **RabbitMQ** | Self-Hosting | Vertical (larger instances) |
-| **.NET Service** | ECS Fargate / EKS | Horizontal (add containers) |
+| **.NET Service(Microservices)** | ECS Fargate / EKS | Horizontal (add containers) |
 | **PostgreSQL Database** |Self-Hosting | Read replicas for reporting |
 
 The system supports **incremental scaling**- start small and grow as needed..
