@@ -16,7 +16,7 @@ from io import BytesIO
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ.get("DYNAMO_TABLE", "MessagesTable"))
 s3_client = boto3.client("s3")
-textract_client = textract_client = boto3.client(
+textract_client = boto3.client(
     "textract",
     region_name="eu-west-1",
     endpoint_url="https://textract.eu-west-1.amazonaws.com"
@@ -46,7 +46,6 @@ def handle_confirmation(sender, confirmed):
         "body": f"<?xml version='1.0' encoding='UTF-8'?><Response>{reply}</Response>"
     }
 
-# convert value into decimal
 def to_decimal(value):
     if value is None:
         return None
@@ -67,8 +66,6 @@ def preprocess_image(image_bytes):
     image.save(buffer, format="JPEG", quality=95)
     return buffer.getvalue()
 
-
-# Retry helper (exponential backoff)
 def retry(func, max_attempts=3, initial_delay=0.3):
     attempt = 0
     while True:
@@ -106,7 +103,7 @@ def extract_meter_reading_from_s3(bucket, s3_key):
     except Exception as e:
         print(f"OCR extraction failed: {e}")
         return {
-            'reading': None,
+            'value': None,  # Changed from 'reading' to 'value'
             'confidence': 0,
             'method': 'textract_error',
             'error': str(e),
@@ -116,23 +113,19 @@ def extract_meter_reading_from_s3(bucket, s3_key):
 def extract_reading_from_text(detected_text):
     """
     Extract meter reading from detected text using multiple strategies.
-    Returns dict with value, confidence, and method used.
     """
     if not detected_text:
         return {'value': None, 'confidence': 0, 'method': 'no_text'}
     
-    # Strategy 1: Look for pure numbers (most common for digital meters)
-    # Pattern: 4-6 digits, possibly with decimal point
+    # Strategy 1: Look for pure numbers (4-6 digits)
     number_pattern = r'\b(\d{4,6}(?:\.\d{1,2})?)\b'
     
     for item in detected_text:
         text = item['text']
         confidence = item['confidence']
         
-        # Try to find meter reading pattern
         matches = re.findall(number_pattern, text)
         if matches:
-            # Take the first substantial number found
             reading = matches[0]
             print(f"✓ Extracted reading: {reading} (confidence: {confidence:.2f}%)")
             return {
@@ -141,7 +134,7 @@ def extract_reading_from_text(detected_text):
                 'method': 'digit_pattern'
             }
     
-    # Strategy 2: Look for numbers with units (kWh, m³, etc.)
+    # Strategy 2: Look for numbers with units
     unit_pattern = r'(\d{3,6}(?:\.\d{1,2})?)\s*(?:kWh|kwh|KWH|m³|m3|cubic|units?)?'
     
     for item in detected_text:
@@ -158,16 +151,15 @@ def extract_reading_from_text(detected_text):
                 'method': 'unit_pattern'
             }
     
-    # Strategy 3: Take the longest number found (fallback)
+    # Strategy 3: Take longest number (fallback)
     all_numbers = []
     for item in detected_text:
         text = item['text']
         confidence = item['confidence']
         
-        # Find all numbers in the text
         numbers = re.findall(r'\d+(?:\.\d+)?', text)
         for num in numbers:
-            if len(num) >= 3:  # At least 3 digits
+            if len(num) >= 3:
                 all_numbers.append({
                     'value': float(num),
                     'confidence': confidence,
@@ -175,7 +167,6 @@ def extract_reading_from_text(detected_text):
                 })
     
     if all_numbers:
-        # Sort by length (longer numbers are more likely to be meter readings)
         all_numbers.sort(key=lambda x: x['length'], reverse=True)
         best = all_numbers[0]
         print(f"⚠ Fallback: Using longest number: {best['value']} (confidence: {best['confidence']:.2f}%)")
@@ -185,7 +176,6 @@ def extract_reading_from_text(detected_text):
             'method': 'longest_number'
         }
     
-    # No reading found
     print("✗ Could not extract meter reading from image")
     return {'value': None, 'confidence': 0, 'method': 'failed'}
 
@@ -200,14 +190,15 @@ def lambda_handler(event, context):
     # Parse form-urlencoded
     parsed = urllib.parse.parse_qs(body)
     
-
     sender = parsed.get("From", [None])[0]
+    sender_phone = sender.replace("whatsapp:", "") if sender else None
     message = parsed.get("Body", [""])[0]  
     meter_number = parsed.get("Meter Number", [None])[0]
     num_media = int(parsed.get("NumMedia", ["0"])[0])
 
     normalized_message = message.strip().lower() if message else ""
 
+    # FIXED INDENTATION - These if statements align properly now
     if normalized_message in ["yes", "y"]:
         return handle_confirmation(sender, confirmed=True)
     if normalized_message in ["no", "n"]:
@@ -232,14 +223,12 @@ def lambda_handler(event, context):
                 print(f"Media {i}: Missing URL or type")
                 continue
 
-            # Only process images
             if not media_type.startswith("image/"):
                 print(f"Skipping non-image media: {media_type}")
                 continue
 
             print(f"Processing image {i}: {media_type}")
 
-            # Download media with retry
             def download():
                 print(f"Downloading media: {media_url}")
                 response = requests.get(media_url, auth=(TWILIO_SID, TWILIO_TOKEN), timeout=10)
@@ -247,16 +236,14 @@ def lambda_handler(event, context):
                 return response.content
 
             try:
-                
                 raw_bytes = retry(download)
                 media_bytes = preprocess_image(raw_bytes)
-
                 print(f"Downloaded {len(media_bytes)} bytes")
             except Exception as e:
                 print(f"Failed to download media: {e}")
                 continue
 
-            # Upload to S3 with structured key
+            # Upload to S3
             now = datetime.utcnow()
             year = now.year
             month = f"{now.month:02d}"
@@ -287,18 +274,20 @@ def lambda_handler(event, context):
             media_urls.append(media_url_cf)
             print(f"Media available at: {media_url_cf}")
 
-            # ✨ Extract meter reading using OCR (only for images)
+            # Extract meter reading using OCR
             print(f"Starting OCR extraction for {s3_key}")
             ocr_result = extract_meter_reading_from_s3(BUCKET, s3_key)
+            
+            # FIXED: Use 'value' key instead of 'reading'
             ocr_results.append({
                 's3_key': s3_key,
-                'reading': ocr_result.get('reading'),
+                'reading': ocr_result.get('value'),  # Changed from 'reading' to 'value'
                 'confidence': ocr_result.get('confidence'),
                 'raw_text': ocr_result.get('raw_text'),
                 'method': ocr_result.get('method'),
                 'error': ocr_result.get('error')
             })
-            print(f"OCR complete for {s3_key}")
+            print(f"OCR complete for {s3_key}: reading={ocr_result.get('value')}, confidence={ocr_result.get('confidence')}")
     else:
         print("No media attachments to process")
 
@@ -316,11 +305,11 @@ def lambda_handler(event, context):
         else:
             print("No valid meter readings extracted from images")
 
-    # Save message + media URLs + OCR results in DynamoDB
+    # Save to DynamoDB
     item = {
         "Id": str(uuid.uuid4()),
         "MessageSid": parsed.get("MessageSid", [None])[0],
-        "sender": sender,
+        "sender": sender_phone,
         "message": message,
         "media_urls": media_urls,
         "meterType": "electricity",
@@ -328,15 +317,15 @@ def lambda_handler(event, context):
         "meterReading": to_decimal(meter_reading),
         "ocrConfidence": to_decimal(best_confidence),
         "ocrResults": [
-        {
-            "s3_key": r["s3_key"],
-            "reading": to_decimal(r["reading"]),
-            "confidence": to_decimal(r["confidence"]),
-            "raw_text": r["raw_text"],
-            "method": r["method"],
-            "error": r.get("error")
-        }
-        for r in ocr_results
+            {
+                "s3_key": r["s3_key"],
+                "reading": to_decimal(r["reading"]),
+                "confidence": to_decimal(r["confidence"]),
+                "raw_text": r["raw_text"],
+                "method": r["method"],
+                "error": r.get("error")
+            }
+            for r in ocr_results
         ],
         "timestamp": datetime.utcnow().isoformat()
     }
@@ -352,32 +341,22 @@ def lambda_handler(event, context):
     twiml_parts = ["<?xml version='1.0' encoding='UTF-8'?><Response>"]
     
     if num_media > 0:
-        # Response when image was sent
-        if meter_reading and best_confidence > 70:
-            # High confidence reading
+        # LOWERED THRESHOLD: Accept readings with confidence > 25% instead of 70%
+        if meter_reading and best_confidence > 25:
             twiml_parts.append(
-                f"<Message>✅ Meter reading received: {meter_reading:.2f} kWh "
-                f"(Confidence: {best_confidence:.0f}%)</Message>"
-            )
-       
-            # Medium confidence - ask for confirmation
-        elif meter_reading:
-            twiml_parts.append(
-                f"<Message>⚠️ We detected a reading: {meter_reading:.0f} kWh "
-                f"(Low confidence: {best_confidence:.0f}%). "
-                f"Reply YES to confirm or resend a clearer image.</Message>"
+                f"<Message>✅ Meter reading received: {meter_reading:.0f} kWh "
+                f"(Confidence: {best_confidence:.0f}%). "
+                f"Reply YES to confirm or NO to resend.</Message>"
             )
         else:
-            # Failed to extract reading
             twiml_parts.append(
                 "<Message>❌ Could not read meter. Please send a clearer image with the meter display visible.</Message>"
             )
 
-        # Optionally echo the processed image
+        # Echo processed image
         for url in media_urls:
             twiml_parts.append(f"<Message><Media>{url}</Media></Message>")
     else:
-        # Response when only text message was sent
         if message:
             twiml_parts.append(
                 f"<Message>Message received: {message}. To submit a meter reading, please send an image of your meter.</Message>"
