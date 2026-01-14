@@ -472,7 +472,7 @@ flowchart TD
 | **API Gateway + Lambda** | AWS Serverless | Automatic (up to 1000 concurrent) |
 | **S3 + DynamoDB** | AWS Managed | Automatic |
 | **RabbitMQ** | Self-Hosting | Vertical (larger instances) |
-| **.NET Service** | ECS Fargate / EKS | Horizontal (add containers) |
+| **.NET Service(Microservices)** | ECS Fargate / EKS | Horizontal (add containers) |
 | **PostgreSQL Database** |Self-Hosting | Read replicas for reporting |
 
 The system supports **incremental scaling**- start small and grow as needed..
@@ -545,8 +545,9 @@ Interested in this project? Here's how you can engage:
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is not licensed 
 
+“All rights reserved. Forking is allowed; any other use is prohibited.”
 ---
 
 <div align="center">
