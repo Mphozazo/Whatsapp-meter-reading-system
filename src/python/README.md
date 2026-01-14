@@ -1,6 +1,6 @@
 
 
-## WhatsApp Meter Reading (Lambda Function) –  Architecture
+## Lambda Function –  Architecture
 
 ```mermaid
 flowchart LR
