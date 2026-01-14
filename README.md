@@ -545,8 +545,9 @@ Interested in this project? Here's how you can engage:
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is not licensed 
 
+“All rights reserved. Forking is allowed; any other use is prohibited.”
 ---
 
 <div align="center">
