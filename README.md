@@ -446,7 +446,7 @@ flowchart TD
     
     subgraph OnPrem["🏢 Self-Hosted "]
         RabbitMQ[RabbitMQ Cluster]
-        BillingService[.NET Billing Service(Microservices)<br/>ECS / EKS / EC2]
+        BillingService[.NET Billing Service<br/>ECS / EKS / EC2]
         Database[(PostgreSQL<br/>RDS)]
     end
 
