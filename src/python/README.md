@@ -56,7 +56,7 @@ flowchart LR
 * Fault-tolerant (retries + confirmations)
 * Optimized for real SA electricity meters
 
-### Possible Extensions
+### Possible Upgrade (Optional)
 
 * Add Rekognition for blur detection
 * Add Step Functions for async OCR
