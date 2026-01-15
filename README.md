@@ -444,7 +444,7 @@ flowchart TD
         Twilio[Twilio WhatsApp API]
     end
     
-    subgraph OnPrem["🏢 Self-Hosted "]
+    subgraph OnPrem["🏢 EC2 Fargate "]
         RabbitMQ[RabbitMQ Cluster]
         BillingService[.NET Billing Service<br/>ECS / EKS / EC2]
         Database[(PostgreSQL<br/>RDS)]
