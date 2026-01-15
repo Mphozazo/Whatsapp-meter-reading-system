@@ -60,32 +60,45 @@ flowchart LR
 
 
 ```
+---
+### 1. Description
+- A **serverless message processing architecture** for WhatsApp meter readings.
+- Uses **AWS Lambda** to handle incoming WhatsApp messages, OCR processing via **Amazon Textract**, and storage in **DynamoDB**.
+- Publishes messages to **RabbitMQ**, ensuring reliable delivery with a **retry mechanism** using **OutboxTable** + **EventBridge**.
+- **C# Billing Consumer** processes messages asynchronously from RabbitMQ.
+### 2. Benefits
+- **Serverless & scalable** – Lambda handles spikes in messages without provisioning servers.
+- **Reliable message delivery** – RabbitMQ + Outbox retry ensures messages are not lost.
+- **Decoupled architecture** – WhatsApp processing, OCR, storage, and billing are independent.
+- **Real-time feedback** – Users receive a WhatsApp response quickly.
+- **Audit & persistence** – All messages are saved in DynamoDB, retryable if failures occur.
+- **Extensible** – Easy to add new consumers or integrations.
+### 3. Process (Step-by-Step)
+1. **User sends WhatsApp message/image** → Twilio WhatsApp API receives it.
+2. **API Gateway** triggers **Lambda Meter Processor**.
+3. **Lambda** processes the message and:
+    - Uploads image to **S3**
+    - Runs **OCR via Amazon Textract**
+    - Saves reading to **DynamoDB MeterReadings**
+    - Creates URL via **CloudFront** for user access
+    - Sends **TwiML response** back via Twilio.
 
-### Key Design Decisions
+4. Lambda attempts to publish message to RabbitMQ.
+    - ✅ Success → Message delivered to **C# Billing Consumer**.
+    - ❌ Failure → Message saved in **OutboxTable**.
+5. **EventBridge triggers a retry Lambda every 2 minutes**.
+    - Scans **OutboxTable** for pending messages
+    - Retries publishing to RabbitMQ with **exponential backoff**
+    - Stops after **maximum 5 retries**.
+6. **C# Billing Consumer** reads messages from RabbitMQ and processes billing.
 
-* **eu-west-1** required for Amazon Textract
-* DynamoDB stores both *raw* and *confirmed* readings
-* WhatsApp YES/NO confirmation ensures data quality
-
-### Data Stored in DynamoDB
-
-* sender (WhatsApp number)
-* meterReading (Decimal)
-* ocrConfidence
-* confirmed (true/false)
-* image S3 key
-* timestamp
-
-### Strengths of This Architecture
-
+### 4. Strengths of This Architecture
 * Fully serverless
 * Scales automatically
 * Region-aware service usage
 * Fault-tolerant (retries + confirmations)
-* Optimized for real SA electricity meters
 
-### Possible Upgrade (Optional)
-
+### 5. Possible Upgrade (Optional)
 * Add Rekognition for blur detection
 * Add Step Functions for async OCR
 * Support water meters & gas meters
