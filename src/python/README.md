@@ -1,6 +1,6 @@
 
 
-## Whatxapp Process flow (Lambda Function) –  Architecture
+## Whatzapp Process flow (Lambda Function) –  Architecture
 
 ```mermaid
 
