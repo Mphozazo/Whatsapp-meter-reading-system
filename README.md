@@ -302,7 +302,7 @@ flowchart LR
 
     Image --> S3[Amazon S3]
     Raw --> DynamoDB[Amazon DynamoDB]
-    Billing --> Relational DB [(PostgreSQL)]
+    Billing --> Relational DB[(PostgreSQL)]
 ```
 
  ### Amazon S3
