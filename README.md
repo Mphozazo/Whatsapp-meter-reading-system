@@ -461,7 +461,7 @@ flowchart TB
         %% Compute
         subgraph Compute["Compute"]
             RabbitMQ[RabbitMQ Cluster EC2 Fargate]
-            Billing[ECS Fargate Billing Service]
+            Billing[EC2 Fargate Billing Service]
             RDS[PostgreSQL RDS]
         end
 
