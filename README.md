@@ -1,4 +1,4 @@
-# 📸 WhatsApp Meter Reading Processing System
+# 📸 WhatsApp Meter Reading Processing System AI 
 **A cloud-native, event-driven microservices case study**
 
 ---
@@ -82,11 +82,88 @@ flowchart LR
   ✅ **Audit trail** - Complete message history in DynamoDB  
   ✅ **Easy to explain** - Clear service boundaries for interviews
 
- 
-
 ---
 
-### 2️⃣ Detailed Message Processing Flow
+### Detailed Architecture Components and Flow
+```mermaid
+flowchart TD
+
+subgraph group_twilio["Twilio boundary"]
+  node_twilio_whatsapp(("Twilio WhatsApp<br/>external provider"))
+  node_twilio_api(("Twilio outbound API<br/>notification API"))
+end
+
+subgraph group_ingestion["AWS ingestion"]
+  node_api_gateway{{"API Gateway<br/>webhook endpoint"}}
+  node_lambda["Python ingestion Lambda<br/>AWS Lambda<br/>[Lamda_handler.py]"]
+  node_s3[("Private evidence bucket<br/>Amazon S3")]
+  node_dynamodb[("Ingestion audit store<br/>Amazon DynamoDB")]
+  node_ocr["OCR extraction<br/>Lambda processing<br/>[Lamda_handler.py]"]
+  node_python_docs["Python deployment notes<br/>documentation<br/>[README.md]"]
+  node_dependency_bundle["Python dependency bundle<br/>deployment artifact"]
+end
+
+subgraph group_handoff["Durable handoff"]
+  node_eventbridge{{"Outbox delivery<br/>Amazon EventBridge"}}
+  node_rabbitmq["RabbitMQ<br/>message broker"]
+  node_handoff_dlq["Handoff DLQ<br/>dead-letter queue"]
+end
+
+subgraph group_billing["Billing domain"]
+  node_billing_service[".NET billing service<br/>private container service"]
+  node_rds[("Billing database<br/>PostgreSQL on RDS")]
+  node_billing_dlq["Billing DLQ<br/>dead-letter queue"]
+end
+
+subgraph group_operations["Operations"]
+  node_cloudwatch["CloudWatch<br/>observability"]
+  node_secrets["Secrets Manager<br/>secret store"]
+end
+
+node_twilio_whatsapp -->|"POST webhook"| node_api_gateway
+node_api_gateway -->|"invokes"| node_lambda
+node_lambda -->|"reads signature/API secrets"| node_secrets
+node_lambda -.->|"validates signature"| node_twilio_whatsapp
+node_lambda -->|"stores media"| node_s3
+node_lambda -->|"persists audit and outbox"| node_dynamodb
+node_s3 -->|"image evidence"| node_ocr
+node_ocr -->|"reading, confidence, state"| node_dynamodb
+node_dynamodb -->|"outbox event"| node_eventbridge
+node_eventbridge -->|"billing-ready metadata"| node_rabbitmq
+node_eventbridge -.->|"exhausted retries"| node_handoff_dlq
+node_rabbitmq -->|"meter-reading event"| node_billing_service
+node_rabbitmq -.->|"exhausted consumer retries"| node_billing_dlq
+node_billing_service -->|"accepted reading"| node_rds
+node_billing_service -->|"confirmation or retry request"| node_twilio_api
+node_lambda -.->|"bad OCR retry request"| node_twilio_api
+node_lambda -->|"logs and metrics"| node_cloudwatch
+node_eventbridge -->|"delivery telemetry"| node_cloudwatch
+node_billing_service -->|"service telemetry"| node_cloudwatch
+node_python_docs -.->|"documents"| node_lambda
+node_dependency_bundle -.->|"deployed dependencies"| node_lambda
+
+click node_lambda "https://github.com/mphozazo/whatsapp-meter-reading-system/blob/main/src/python/Lamda_handler.py"
+click node_ocr "https://github.com/mphozazo/whatsapp-meter-reading-system/blob/main/src/python/Lamda_handler.py"
+click node_python_docs "https://github.com/mphozazo/whatsapp-meter-reading-system/blob/main/src/python/README.md"
+click node_dependency_bundle "https://github.com/mphozazo/whatsapp-meter-reading-system/blob/main/src/python/python_request_package.zip"
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_twilio_whatsapp,node_twilio_api toneBlue
+class node_api_gateway,node_lambda,node_s3,node_dynamodb,node_ocr,node_python_docs,node_dependency_bundle toneAmber
+class node_eventbridge,node_rabbitmq,node_handoff_dlq toneMint
+class node_billing_service,node_rds,node_billing_dlq toneRose
+class node_cloudwatch,node_secrets toneIndigo
+
+```
+---
+
+### Detailed Message Processing Flow
 
 ```mermaid
 sequenceDiagram
