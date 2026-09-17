@@ -1,0 +1,21 @@
+[{
+  "name": "rabbitmq",
+  "image": "rabbitmq:3-management",
+  "essential": true,
+  "portMappings": [
+    {"containerPort": 5672},
+    {"containerPort": 15672}
+  ],
+  "environment": [
+    {"name": "RABBITMQ_DEFAULT_USER", "value": "admin"},
+    {"name": "RABBITMQ_DEFAULT_PASS", "value": "mphozazo@1976"}
+  ],
+  "logConfiguration": {
+    "logDriver": "awslogs",
+    "options": {
+      "awslogs-group": "/ecs/rabbitmq",
+      "awslogs-region": "af-south-1",
+      "awslogs-stream-prefix": "rabbitmq"
+    }
+  }
+}]

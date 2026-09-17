@@ -1,0 +1,10 @@
+[
+  {
+    "IndexName": "StatusNextRetryIndex",
+    "KeySchema": [
+      {"AttributeName": "Status", "KeyType": "HASH"},
+      {"AttributeName": "NextRetryAt", "KeyType": "RANGE"}
+    ],
+    "Projection": {"ProjectionType": "ALL"}
+  }
+]
