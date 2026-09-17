@@ -302,7 +302,7 @@ flowchart LR
 
     Image --> S3[Amazon S3]
     Raw --> DynamoDB[Amazon DynamoDB]
-    Billing --> SQL[(Billing Database)]
+    Billing --> RelationalDB[(PostgreSQL)]
 ```
 
  ### Amazon S3
@@ -336,37 +336,51 @@ flowchart LR
 ### 🔁 Failure Handling & Reliability
 ```mermaid
 flowchart TD
-    OCR[OCR Processing]
-    Retry[RabbitMQ Retry Queue]
+    OCR[Lambda OCR Processing]
+    Outbox[Outbox Table DynamoDB]
+    EventBridge[EventBridge Retry]
+    RabbitMQ[RabbitMQ Cluster ECS Fargate]
+    Billing[Billing Service Storage]
     DLQ[Dead Letter Queue]
     Notify[WhatsApp Error Message]
 
-    OCR -->|Success| Billing[Billing Storage]
-    OCR -->|Failure| Retry
-    Retry -->|Retry Limit Reached| DLQ
+    %% Success path
+    OCR -->|Success| Outbox
+    Outbox --> EventBridge
+    EventBridge --> RabbitMQ
+    RabbitMQ --> Billing
+
+    %% Failure paths
+    OCR -->|Failure| DLQ
+    EventBridge -->|Retry Limit Reached| DLQ
+    RabbitMQ -->|Consumer Failure + Retry Limit| DLQ
     DLQ --> Notify
+
  ```
  ### Failure Scenarios
  #### 1. OCR Processing Failure
 - ❌ Image quality too poor to read
-- ✅ Message stored in DynamoDB with `status: FAILED`
-- ✅ User notified to retry with clearer image
+- ✅ Message stored in **DynamoDB** with `status: FAILED`
+- ✅ User notified on **Whatzapp** to retry with clearer image
 - ✅ No RabbitMQ event published
 
 #### 2. RabbitMQ Consumer Failure
-- ❌ .NET service crashes or database unavailable
-- ✅ Message remains in queue
-- ✅ Automatic retry with exponential backoff
-- ✅ After 5 retries → Dead Letter Queue
-- ✅ CloudWatch alarm triggers ops notification
+- ❌ Lambda writes to Outbox, EventBridge or RabbitMQ unavailable.
+- ✅ EventBridge automatically retries delivery with exponential backoff.
+- ✅ After max retries (e.g., 5) → message moved to DLQ.
+- ✅ CloudWatch alarm triggers ops notification.
 
-#### 3. Duplicate Messages
+### 3. RabbitMQ Consumer Failure (Billing Service)
+- ❌ Billing ECS Fargate service crashes or RDS unavailable.
+- ✅ Message remains in RabbitMQ queue.
+- ✅ Automatic retries with backoff.
+- ✅ After **max retries → DLQ**, CloudWatch alarm triggers.
+  
+#### 4. Duplicate Messages
 - ❌ User sends same image twice
-- ✅ WhatsApp `MessageSid` used as idempotency key
+- ✅ **WhatsApp `MessageSid`** used as idempotency key
 - ✅ Duplicate processing safely ignored
 - ✅ User receives "Already processed" message
-
-
 ---
    ## 🔐 Security Considerations
 - ✅ **Twilio webhook signature validation** - Prevents unauthorized requests
@@ -421,48 +435,56 @@ flowchart TD
 ## 🚀 Deployment Overview
 
 ```mermaid
- flowchart TB
-    subgraph AWS["☁️ AWS Cloud"]
+flowchart TB
+    %% External
+    Twilio[Twilio WhatsApp API]
+
+    %% AWS Cloud
+    subgraph AWS["AWS Cloud"]
         direction TB
+
+        %% Serverless
         subgraph Serverless["Serverless"]
             APIGW[API Gateway]
-            Lambda[Lambda Function]
+            Lambda[Lambda OCR User Confirmation]
         end
-        
+
+        %% Storage
         subgraph Storage["Storage"]
             S3[S3 Bucket]
-            DynamoDB[DynamoDB Table]
+            Outbox[Outbox Table DynamoDB]
         end
-        
+
+        %% Event-driven retry
+        EventBridge[EventBridge Retry Outbox]
+
+        %% Compute
+        subgraph Compute["Compute"]
+            RabbitMQ[RabbitMQ Cluster EC2 Fargate]
+            Billing[EC2 Fargate Billing Service]
+            RDS[PostgreSQL RDS]
+        end
+
+        %% Monitoring
         subgraph Monitoring["Monitoring"]
             CloudWatch[CloudWatch Logs]
             Alarms[CloudWatch Alarms]
         end
     end
-    
-    subgraph External["🌐 External Services"]
-        Twilio[Twilio WhatsApp API]
-    end
-    
-    subgraph OnPrem["🏢 Self-Hosted "]
-        RabbitMQ[RabbitMQ Cluster]
-        BillingService[.NET Billing Service<br/>ECS / EKS / EC2]
-        Database[(PostgreSQL<br/>RDS)]
-    end
 
-    Twilio <--> APIGW
+    %% Connections
+    Twilio --> APIGW
     APIGW --> Lambda
     Lambda --> S3
-    Lambda --> DynamoDB
     Lambda --> CloudWatch
-    Lambda --> RabbitMQ
-    RabbitMQ --> BillingService
-    BillingService --> Database
-    BillingService --> Alarms
+    Billing --> RDS
+    Billing --> Alarms
 
-    style AWS fill:#FF9900,stroke:#D97706,stroke-width:2px,color:#fff
-    style External fill:#F22F46,stroke:#D61F3A,stroke-width:2px,color:#fff
-    style OnPrem fill:#512BD4,stroke:#3A1F8F,stroke-width:2px,color:#fff
+    %% Main message flow
+    Lambda --> Outbox
+    Outbox --> EventBridge
+    EventBridge --> RabbitMQ
+    RabbitMQ --> Billing
   ```
 
 ### Deployment Strategy
@@ -473,7 +495,7 @@ flowchart TD
 | **S3 + DynamoDB** | AWS Managed | Automatic |
 | **RabbitMQ** | Self-Hosting | Vertical (larger instances) |
 | **.NET Service(Microservices)** | ECS Fargate / EKS | Horizontal (add containers) |
-| **PostgreSQL Database** |Self-Hosting | Read replicas for reporting |
+| **PostgreSQL Database** |Aws Managed RDS | Read replicas for reporting |
 
 The system supports **incremental scaling**- start small and grow as needed..
 
